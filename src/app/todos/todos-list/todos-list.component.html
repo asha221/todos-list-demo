@@ -1,1 +1,9 @@
-<p>todos-list works!</p>
+<ul class="list-group list-group-flush todo-list" *ngIf="!isLoading">
+    <li class="list-group-item" *ngFor="let todo of todos">
+    <span class="align-left" [ngClass]="{'compleated': todo.isCompleted}">{{ todo.title }}</span>
+      
+    </li>
+  </ul>
+  <div class="text-center" *ngIf="isLoading">
+    <img src="../../../assets/img/loader.gif" />
+  </div>

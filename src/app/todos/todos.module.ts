@@ -10,7 +10,8 @@ import { AddEditTodoComponent } from './add-edit-todo/add-edit-todo.component';
   imports: [
     CommonModule
   ],
-  exports: [TodosListComponent]
+  exports: [TodosListComponent,
+    AddEditTodoComponent]
 }
 )
 export class TodosModule { }
