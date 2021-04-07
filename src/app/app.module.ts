@@ -7,6 +7,7 @@ import {HttpClientModule} from '@angular/common/http';
 
 import { SharedModule } from './shared/shared.module';
 import {TodosModule} from './todos/todos.module';
+import { RouterModule } from '@angular/router';
 
 @NgModule({
   declarations: [
@@ -17,7 +18,8 @@ import {TodosModule} from './todos/todos.module';
     AppRoutingModule,
     TodosModule,
     SharedModule,
-    HttpClientModule
+    HttpClientModule,
+    RouterModule
   ],
   providers: [],
   bootstrap: [AppComponent]
