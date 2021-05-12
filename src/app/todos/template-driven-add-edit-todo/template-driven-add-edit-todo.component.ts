@@ -1,24 +1,21 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { FormBuilder, FormGroup, Validators, FormArray, FormControl } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ITodo } from '../../interface/todo';
-
 import { ICategory } from '../../interface/category';
 import { ITag } from '../../interface/tag';
 import { TodoService } from '../todo.service';
 import { forkJoin, Observable } from 'rxjs';
 import { NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
-
+import { Router } from '@angular/router';
 
 @Component({
-  selector: 'app-add-edit-todo',
-  templateUrl: './add-edit-todo.component.html',
-  styleUrls: ['./add-edit-todo.component.css']
+  selector: 'app-template-driven-add-edit-todo',
+  templateUrl: './template-driven-add-edit-todo.component.html',
+  styleUrls: ['./template-driven-add-edit-todo.component.css']
 })
-export class AddEditTodoComponent implements OnInit {
+export class TemplateDrivenAddEditTodoComponent implements OnInit {
 
-  isEdit: any;
-  todoForm: FormGroup | any;
+  isEdit: boolean=false;
   categories: ICategory[]=[];
   tags: ITag[]=[];
   isFormLoading: boolean = false;
@@ -30,67 +27,47 @@ export class AddEditTodoComponent implements OnInit {
     targetDate: { 
       year: this.currentDate.getFullYear(), 
       month: this.currentDate.getMonth()+1,
-      // month starts with 0 index so we are adding +1
       day: this.currentDate.getDate()
     } as NgbDateStruct,
-    // the above format is done by  NgbDateStruct interface 
     tags: [],
     category: ''
   };
   errorMessage: string = '';
 
-  constructor(private route: ActivatedRoute, 
-              private fb: FormBuilder, 
+  constructor(private route: ActivatedRoute,
               private todoService: TodoService,
               private router: Router) { }
 
   ngOnInit() {
-    this.todoForm = this.fb.group({
-      title: [this.todo.title, [Validators.required, Validators.minLength(5)]],
-      isCompleted: [this.todo.isCompleted],
-      targetDate: [this.todo.targetDate, Validators.required],
-      tags: this.fb.array([]),
-      category: [this.todo.category, Validators.required]
-    });
-
-    this.todoForm.valueChanges.subscribe(
-      (      values: any) => console.log(values)
-    );
-    
     this.route.paramMap.subscribe(
-      // if we subscribe to this.route.paramMap we will get the id 
       (params:any) => {
         this.todo._id = params.get('id');
         if(this.todo._id === '0' || !this.todo._id) {
-          //  id=0 is for save !this.todo._id is for edit
           this.isEdit = false;
         } else {
           this.isEdit = true;
         }
       }
     );
-    
+
     let categories$ = this.todoService.getCategories();  
     let tags$ = this.todoService.getTags();  
     let todo$ = this.todoService.getTodo(this.todo._id);  
     let restCalls: Array<Observable<any>> = [categories$, tags$];
-      // in the case of edit restCalls have 3 observables categories$, tags$,todo$
-      // in the case of add restCalls have 2 observables categories$, tags$ because here we don't need id  of todo
+
     if(this.isEdit) {
       restCalls.push(todo$);
     }
 
     this.isFormLoading = true;
     forkJoin(restCalls).subscribe(
-      // forkJoin() method is used to handle multiple calls at one time
       ([categories, tags, todo]) => {
         this.isFormLoading = false;
         this.categories = categories;
         this.tags = tags;
-        this.buildTagControls();
+        this.formatTagControls();
         if(this.isEdit) {
           this.formatTodo(todo as ITodo);
-          this.todoForm.patchValue(this.todo);
           this.updateTagControls(todo.tags);
         }
       },
@@ -101,12 +78,10 @@ export class AddEditTodoComponent implements OnInit {
     );
   }
 
-  buildTagControls() {
+  formatTagControls() {
     if(this.tags.length) {
       for(let tag of this.tags) {
         tag.selected = false;
-        let tagControl = new FormControl(tag.selected);
-        this.tagsControls.push(tagControl);
       }
     }
   }
@@ -125,62 +100,44 @@ export class AddEditTodoComponent implements OnInit {
   }
 
   updateTagControls(sourceTags: ITag[]) {
-    // these method is used to do checked or unchecked on tags
     if(sourceTags.length) {
       let tagIds = sourceTags.map(tag => tag._id);
       this.tags = this.tags.map(tag => {
-        // this.tags means the list of tags received from the array
         if(tagIds.indexOf(tag._id) !== -1) {
           tag.selected = true;
         }
         return tag;
       });
+      console.log(this.tags);
     }
-
-    let tagValues = this.tags.map(tag => tag.selected);
-    this.todoForm.patchValue({tags: tagValues});
   }
 
-  get title() {
-    return this.todoForm.get('title');
-  }
-
-  get tagsControls() {
-    return this.todoForm.get('tags') as FormArray;
-  }
-
-  get targetDate() {
-    return this.todoForm.get('targetDate');
-  }
-
-  get category() {
-    return this.todoForm.get('category');
+  updateTagOnChange(tagChanged:any, event:any) {
+    this.tags = this.tags.map(tag => {
+      if(tag._id == tagChanged._id) {
+        tag.selected = (<HTMLInputElement>event.target).checked;
+      }
+      return tag;
+    });
   }
 
   formatPayload(payload:any) {
     let date = payload.targetDate;
     payload.targetDate = new Date(`${date.year}/${date.month}/${date.day}`);
-    if(payload.tags.length) {
-      payload.tags = payload.tags.map((value: string, index: string | number):any => {
-        if(value) {
-          return this.tags[<any>index]._id;
-        }
-      }).filter((value:any) => { 
-        if(value) {
-          return value;
-        }
-       });
-    }
+    
+    payload.tags = this.tags.filter(value => value.selected).map(value => value._id);
+
     return payload;
   }
 
-  saveTodo() {
-    if(this.todoForm.valid) {
-      let payload = this.formatPayload(this.todoForm.value);
+  saveTodo(todoForm:any) {
+    if(todoForm.valid) {
+      let payload = this.formatPayload(todoForm.value);
+      console.log(payload);
       if(this.isEdit) {
         payload.id = this.todo._id;
         this.todoService.updateTodo(payload)
-            .subscribe(data => {
+            .subscribe((data) => {
               this.router.navigate(['todos']);
             },
             (err: any) => {
@@ -189,7 +146,6 @@ export class AddEditTodoComponent implements OnInit {
             });
       } else {
         this.todoService.saveTodo(payload)
-        // payload is nothing but the form field values
             .subscribe((data) => {
               this.router.navigate(['todos']);
             },
@@ -201,7 +157,6 @@ export class AddEditTodoComponent implements OnInit {
   }
 
   cancle(event:any) {
-    // in case of cancle we will go to the todos list page
     event.preventDefault();
     this.router.navigate(['todos']);
   }

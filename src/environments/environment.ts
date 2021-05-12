@@ -4,7 +4,9 @@
 
 export const environment = {
   production: false,
-  apiUrl : 'https://todos-api-dev.herokuapp.com'
+  baseUrl: 'http://localhost:3000',
+
+  //apiUrl : 'https://todos-api-dev.herokuapp.com'
 };
 
 /*
